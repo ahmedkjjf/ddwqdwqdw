@@ -302,7 +302,7 @@ const storageManager = {
     updateFavorites() {
         const container = document.getElementById('favoritesGrid');
         if (!container) return;
-
+        
         container.innerHTML = state.favorites
             .map(server => `
                 <div class="favorite-card">
@@ -443,7 +443,7 @@ function showSavingAnimation() {
     const savingEl = document.createElement('div');
     savingEl.className = 'saving-transition';
     document.body.appendChild(savingEl);
-
+    
     setTimeout(() => {
         savingEl.remove();
     }, 1000);
@@ -454,9 +454,9 @@ function showNotification(message, type = 'success') {
     notification.className = `notification ${type}`;
     notification.textContent = message;
     document.body.appendChild(notification);
-
+    
     showSavingAnimation(); // Add smooth saving animation
-
+    
     setTimeout(() => {
         notification.remove();
     }, 3000);
@@ -573,3 +573,161 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
+
+// Import security features
+import { securityConfig, RateLimiter, sanitizeInput, isValidFiveMUrl, generateCSRFToken, secureStorage } from './security.js';
+
+// Initialize security features
+const rateLimiter = new RateLimiter(securityConfig.maxRequestsPerMinute, 60000);
+let csrfToken = generateCSRFToken();
+
+// DOM Elements
+const serverInput = document.getElementById('serverInput');
+const searchBtn = document.getElementById('searchBtn');
+const errorMessage = document.getElementById('errorMessage');
+const notification = document.getElementById('notification');
+
+// Initialize the application with security measures
+document.addEventListener('DOMContentLoaded', () => {
+    // Set CSRF token
+    serverInput.dataset.csrfToken = csrfToken;
+    
+    // Load favorites from secure storage
+    loadFavorites();
+    
+    // Setup input validation
+    setupInputValidation();
+});
+
+// Input validation setup
+function setupInputValidation() {
+    serverInput.addEventListener('input', (e) => {
+        const input = sanitizeInput(e.target.value.trim());
+        const isValid = isValidFiveMUrl(input);
+        searchBtn.disabled = !isValid;
+        
+        if (!isValid && input) {
+            showError('الرجاء إدخال رابط FiveM صالح');
+        } else {
+            hideError();
+        }
+    });
+}
+
+// Server data fetching with rate limiting and validation
+async function fetchServerData(url) {
+    if (!rateLimiter.isAllowed('user')) {
+        showNotification('تم تجاوز حد الطلبات، يرجى المحاولة لاحقاً', 'error');
+        return null;
+    }
+
+    if (!isValidFiveMUrl(url)) {
+        showError('رابط غير صالح');
+        return null;
+    }
+
+    try {
+        const response = await fetch(url, {
+            headers: {
+                'X-CSRF-Token': csrfToken
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('فشل في جلب بيانات السيرفر');
+        }
+
+        const data = await response.json();
+        return sanitizeServerData(data);
+    } catch (error) {
+        showNotification(error.message, 'error');
+        return null;
+    }
+}
+
+// Sanitize server data before display
+function sanitizeServerData(data) {
+    if (!data) return null;
+    
+    return {
+        name: sanitizeInput(data.name || ''),
+        players: parseInt(data.players) || 0,
+        maxPlayers: parseInt(data.maxPlayers) || 0,
+        ping: parseInt(data.ping) || 0,
+        details: data.details ? sanitizeInput(data.details) : ''
+    };
+}
+
+// Secure favorites management
+function loadFavorites() {
+    const favorites = secureStorage.get('favorites') || [];
+    renderFavorites(favorites);
+}
+
+function saveFavorite(serverData) {
+    if (!serverData || !serverData.name) return;
+    
+    const favorites = secureStorage.get('favorites') || [];
+    const exists = favorites.some(f => f.name === serverData.name);
+    
+    if (!exists) {
+        favorites.push({
+            name: serverData.name,
+            url: serverData.url,
+            timestamp: Date.now()
+        });
+        secureStorage.set('favorites', favorites);
+        renderFavorites(favorites);
+        showNotification('تمت إضافة السيرفر إلى المفضلة', 'success');
+    }
+}
+
+// UI Feedback functions
+function showError(message) {
+    errorMessage.textContent = sanitizeInput(message);
+    errorMessage.classList.remove('hidden');
+}
+
+function hideError() {
+    errorMessage.classList.add('hidden');
+    errorMessage.textContent = '';
+}
+
+function showNotification(message, type = 'info') {
+    notification.textContent = sanitizeInput(message);
+    notification.className = `notification ${type}`;
+    notification.classList.remove('hidden');
+    
+    setTimeout(() => {
+        notification.classList.add('hidden');
+    }, 3000);
+}
+
+// Event Listeners
+searchBtn.addEventListener('click', async () => {
+    const url = sanitizeInput(serverInput.value.trim());
+    const serverData = await fetchServerData(url);
+    
+    if (serverData) {
+        updateServerInfo(serverData);
+        updateRecentSearches(url);
+    }
+});
+
+// Chart initialization with security measures
+function initializeCharts(data) {
+    // Sanitize and validate data before creating charts
+    const sanitizedData = data.map(item => ({
+        timestamp: new Date(item.timestamp).getTime(),
+        players: parseInt(item.players) || 0
+    })).filter(item => !isNaN(item.timestamp) && !isNaN(item.players));
+
+    // ... rest of chart initialization code
+}
+
+// Export necessary functions for testing
+export {
+    fetchServerData,
+    sanitizeServerData,
+    showNotification
+};
