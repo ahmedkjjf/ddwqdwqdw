@@ -3,6 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; img-src 'self' https: data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; script-src 'self' https://cdn.jsdelivr.net/npm/chart.js 'nonce-{{nonce}}'; connect-src 'self' https://*.cfx.re https://*.fivem.net;">
+    <meta http-equiv="X-Frame-Options" content="DENY">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="Permissions-Policy" content="geolocation=(), microphone=(), camera=()">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
     <title>إحصائيات FiveM المتقدمة - الزعابي</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
@@ -28,19 +33,23 @@
 
         <div class="search-container">
             <div class="input-group">
-                <input type="text" id="serverInput" placeholder="أدخل رابط cfx.re" dir="ltr">
-                <button id="searchBtn" class="primary-btn">
+                <input type="text" id="serverInput" placeholder="أدخل رابط cfx.re" dir="ltr" 
+                       pattern="^https?:\/\/(cfx\.re|servers\.fivem\.net).*" 
+                       autocomplete="off" 
+                       data-csrf-token="">
+                <button id="searchBtn" class="primary-btn" disabled>
                     <i class="fas fa-search"></i>
                     بحث
                 </button>
             </div>
+            <div id="errorMessage" class="error-message hidden"></div>
             <div class="recent-searches" id="recentSearches"></div>
         </div>
 
         <div class="server-info hidden" id="serverInfo">
             <div class="server-header">
                 <h2 id="serverName">اسم السيرفر</h2>
-                <button id="favoriteBtn" class="icon-btn">
+                <button id="favoriteBtn" class="icon-btn" data-server-id="">
                     <i class="far fa-star"></i>
                 </button>
             </div>
@@ -89,18 +98,19 @@
             <div class="favorites-grid" id="favoritesGrid"></div>
         </div>
 
-        <div id="notification" class="notification hidden"></div>
+        <div id="notification" class="notification hidden" role="alert" aria-live="polite"></div>
     </div>
 
     <footer>
         <p>© 2025 جميع الحقوق محفوظة لـ الزعابي</p>
         <div class="social-links">
-            <a href="#" class="social-link"><i class="fab fa-discord"></i></a>
-            <a href="#" class="social-link"><i class="fab fa-twitter"></i></a>
+            <a href="#" class="social-link" rel="noopener noreferrer"><i class="fab fa-discord"></i></a>
+            <a href="#" class="social-link" rel="noopener noreferrer"><i class="fab fa-twitter"></i></a>
         </div>
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="app.js"></script>
+    <script src="security.js" type="module"></script>
+    <script src="app.js" type="module"></script>
 </body>
 </html>
